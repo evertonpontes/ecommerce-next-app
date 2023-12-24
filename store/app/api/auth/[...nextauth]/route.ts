@@ -1,6 +1,8 @@
 import NextAuth from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import FacebookProvider from "next-auth/providers/facebook";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 
@@ -23,7 +25,7 @@ const handler = NextAuth({
         const password = credentials?.password;
 
         try {
-          const user = await prisma.employee.findUnique({
+          const user = await prisma.user.findUnique({
             where: {
               email,
             },
@@ -35,7 +37,7 @@ const handler = NextAuth({
 
           const passwordMatch = await bcrypt.compare(
             password || "",
-            user.password
+            user?.password || ""
           );
 
           if (!passwordMatch) {
@@ -48,12 +50,22 @@ const handler = NextAuth({
         }
       },
     }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID || "",
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
+      allowDangerousEmailAccountLinking: true,
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      allowDangerousEmailAccountLinking: true,
+    }),
   ],
   callbacks: {
     async session({ session, token, user }) {
       if (session.user) {
         session.user.id =
-          (await prisma.employee
+          (await prisma.user
             .findUnique({
               where: {
                 email: session.user.email || "",

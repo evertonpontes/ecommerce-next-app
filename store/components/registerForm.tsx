@@ -17,10 +17,9 @@ import {
 import { useContext, useEffect, useState } from "react";
 
 import { useToast } from "@/components/ui/use-toast";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-import ImageEditor from "./imageEditor";
 import PasswordInput from "./passwordInput";
 import { Button } from "./ui/button";
 import {
@@ -37,8 +36,10 @@ import { SpinnerCircle } from "./spinners";
 import { cn } from "@/lib/utils";
 import { InputFormComponent } from "./inputFormComponent";
 
-import { employeesFormSchema } from "@/lib/formSchemas";
+import { clientsFormSchema } from "@/lib/formSchemas";
 import { dataURLToFormData } from "@/lib/convert";
+import { Separator } from "./ui/separator";
+import { FaFacebook, FaGoogle } from "react-icons/fa";
 
 const RegisterForm = () => {
   const router = useRouter();
@@ -56,55 +57,20 @@ const RegisterForm = () => {
     }
   }, [isUploadingData]);
 
-  const form = useForm<z.infer<typeof employeesFormSchema>>({
-    resolver: zodResolver(employeesFormSchema),
+  const form = useForm<z.infer<typeof clientsFormSchema>>({
+    resolver: zodResolver(clientsFormSchema),
     defaultValues: {
       name: "",
       email: "",
       password: "",
-      image: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof employeesFormSchema>) {
-    const croppedImage = values.image;
-
-    if (!croppedImage) {
-      const data = { ...values };
-
-      setUploadingData(true);
-      const responseDB = await fetch("/api/employee", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }).then((res) => {
-        return res.json();
-      });
-
-      if (responseDB.status !== 201) {
-        setTimeout(() => setUploadingData(false), 0);
-        toast({
-          title: "Uh oh! Something went wrong.",
-          description: responseDB.error,
-        });
-        return;
-      }
-
-      await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      });
-
-      return setTimeout(() => router.push("/"), 1000);
-    }
-
-    setUploadingData(true);
-
+  async function onSubmit(values: z.infer<typeof clientsFormSchema>) {
     const data = { ...values };
 
-    data.image = "";
-
-    const responseDB = await fetch("/api/employee", {
+    setUploadingData(true);
+    const responseDB = await fetch("/api/client", {
       method: "POST",
       body: JSON.stringify(data),
     }).then((res) => {
@@ -120,68 +86,53 @@ const RegisterForm = () => {
       return;
     }
 
-    const formData = await dataURLToFormData(croppedImage);
-
-    const responseFile = await fetch(
-      `/api/files?key=employees&name=${values.name}&cat=profile/picture`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    ).then((res) => res.json());
-
-    const employee = responseDB.body;
-
-    await fetch(`/api/employee?id=${employee.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ image: responseFile.downloadURL }),
-    }).then((res) => {
-      return res.json();
-    });
-
     await signIn("credentials", {
       email: data.email,
       password: data.password,
       redirect: false,
     });
 
-    setTimeout(() => router.push("/"), 1000);
+    return setTimeout(() => router.push("/"), 1000);
+  }
+
+  async function handleOAuth(provider: string) {
+    try {
+      const res = await signIn(provider, {
+        callbackUrl: "/".replace("#_=_", ""),
+      });
+
+      if (res?.error) {
+        console.log(res);
+        toast({
+          title: "Uh oh! Something went wrong.",
+          description: res.error,
+        });
+        return;
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="pb-4 md:flex items-center gap-4">
+        <div className="pb-4">
           <FormField
             control={form.control}
-            name="image"
+            name="name"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Image</FormLabel>
+              <FormItem className="pb-4 md:pb-0">
+                <FormLabel>Name</FormLabel>
                 <FormControl>
-                  <ImageEditor field={field} />
+                  <InputFormComponent placeholder="Your Name" {...field} />
                 </FormControl>
+                <FormDescription>Enter your fullname</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-          <div className="pb-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="pb-4 md:pb-0">
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <InputFormComponent placeholder="Your Name" {...field} />
-                  </FormControl>
-                  <FormDescription>Enter your fullname</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
         <div className="pb-4">
           <FormField
             control={form.control}
@@ -239,6 +190,28 @@ const RegisterForm = () => {
           >
             Already have an account?
           </Link>
+        </div>
+        <div className="p-4">
+          <Separator className="mb-4" />
+          <div className="flex flex-col text-center gap-2">
+            <span>or</span>
+            <Button
+              type="button"
+              className="flex gap-2"
+              onClick={() => handleOAuth("google")}
+            >
+              <FaGoogle size="1.2rem" />
+              <span className="font-bold">Google</span>
+            </Button>
+            <Button
+              type="button"
+              className="flex gap-2"
+              onClick={() => handleOAuth("facebook")}
+            >
+              <FaFacebook size="1.2rem" />
+              <span className="font-bold">Facebook</span>
+            </Button>
+          </div>
         </div>
       </form>
     </Form>

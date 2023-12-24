@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 
 export const POST = async (request: Request) => {
   try {
-    const employee = await request.json();
+    const client = await request.json();
 
-    const user = await prisma.employee.findUnique({
+    const user = await prisma.user.findUnique({
       where: {
-        email: employee?.email,
+        email: client?.email,
       },
     });
 
@@ -21,14 +21,14 @@ export const POST = async (request: Request) => {
       );
     }
 
-    const hashedPassword = await hash(employee?.password, 10);
+    const hashedPassword = await hash(client?.password, 10);
 
-    const newEmployee = await prisma.employee
+    const newclient = await prisma.user
       .create({
         data: {
-          name: employee?.name,
-          image: employee?.image,
-          email: employee?.email,
+          name: client?.name,
+          image: client?.image,
+          email: client?.email,
           password: hashedPassword,
         },
       })
@@ -37,7 +37,7 @@ export const POST = async (request: Request) => {
       });
 
     return NextResponse.json(
-      { body: newEmployee, status: 201 },
+      { body: newclient, status: 201 },
       { status: 201 }
     );
   } catch (error) {
@@ -54,7 +54,7 @@ export const PUT = async (request: NextRequest) => {
 
   try {
     if (id) {
-      await prisma.employee.update({
+      await prisma.user.update({
         where: {
           id: id,
         },
@@ -65,7 +65,7 @@ export const PUT = async (request: NextRequest) => {
     }
 
     return NextResponse.json(
-      { message: "Employee upldated.", status: 201 },
+      { message: "client upldated.", status: 201 },
       { status: 201 }
     );
   } catch (error) {
