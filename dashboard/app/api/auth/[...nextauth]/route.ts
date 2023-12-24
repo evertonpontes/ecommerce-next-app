@@ -52,18 +52,23 @@ const handler = NextAuth({
   callbacks: {
     async session({ session, token, user }) {
       if (session.user) {
-        session.user.id =
-          (await prisma.employee
-            .findUnique({
-              where: {
-                email: session.user.email || "",
-              },
-              select: {
-                id: true,
-              },
-            })
-            .then((res) => res?.id)) || "";
+        const response = await prisma.employee
+          .findUnique({
+            where: {
+              email: session.user.email || "",
+            },
+            select: {
+              id: true,
+              image: true,
+            },
+          })
+          .then((res) => res);
+
+        session.user.id = response?.id || "";
+        session.user.image = response?.image;
       }
+
+      console.log(session);
 
       return {
         expires: session.expires,
